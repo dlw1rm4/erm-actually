@@ -1,1 +1,4 @@
-# claude-hackathon-proj
+# Erm...Actually!
+### Name: Gloria Lee, Kaitlyn Nguy
+
+## About our Project
