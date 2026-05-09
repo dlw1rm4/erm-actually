@@ -4,16 +4,16 @@
     "version": "1.0",
     "permissions": ["activeTab", "scripting"],
     "icons": {
-        "16": "./images/favicon.ico",
-        "48": "./images/favicon.ico",
-        "128": "./images/favicon.ico"
+        "16": "./images/favicon.png",
+        "48": "./images/favicon.png",
+        "128": "./images/favicon.png"
     },
     "action": {
         "default_popup": "popup.html",
         "default_icon": {
-            "16": "./images/favicon.ico",
-            "48": "./images/favicon.ico",
-            "128": "./images/favicon.ico"
+            "16": "./images/favicon.png",
+            "48": "./images/favicon.png",
+            "128": "./images/favicon.png"
         }
     },
     "content_scripts": [
