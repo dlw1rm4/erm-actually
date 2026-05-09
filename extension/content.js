@@ -1,5 +1,7 @@
 // LOCAL VARIABLES
 const timeout = 5000;
+let isAnalyzing = false;
+
 
 console.log("[content] Script loaded on:", window.location.href);
 
@@ -72,39 +74,39 @@ async function analyzeEmail(text) {
 }
 
 function showChatbot(output) {
-    const existing = document.getElementById("erm-chatbot");
-    if (existing) existing.remove();
+  const existing = document.getElementById("erm-chatbot");
+  if (existing) existing.remove();
 
-    const chatbot = document.createElement("div");
-    chatbot.id = "erm-chatbot";
+  const chatbot = document.createElement("div");
+  chatbot.id = "erm-chatbot";
 
-    const header = document.createElement("div");
-    header.className = "chatbot-header";
+  const header = document.createElement("div");
+  header.className = "chatbot-header";
 
-    const title = document.createElement("div");
-    title.className = "chatbot-title";
-    title.textContent = "Erm... Actually!";
+  const title = document.createElement("div");
+  title.className = "chatbot-title";
+  title.textContent = "Erm... Actually!";
 
-    const closeBtn = document.createElement("button");
-    closeBtn.className = "chatbot-close";
-    closeBtn.textContent = "✕";
-    closeBtn.addEventListener("click", () => {
-        chatbot.remove();
-        chrome.storage.local.set({ isDetecting: false, activeTabUrl: null });
-        console.log("[content] Chatbot closed by user.");
-    });
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "chatbot-close";
+  closeBtn.textContent = "✕";
+  closeBtn.addEventListener("click", () => {
+    chatbot.remove();
+    chrome.storage.local.set({ isDetecting: false, activeTabUrl: null });
+    console.log("[content] Chatbot closed by user.");
+  });
 
-    header.appendChild(title);
-    header.appendChild(closeBtn);
+  header.appendChild(title);
+  header.appendChild(closeBtn);
 
-    const body = document.createElement("div");
-    body.className = "chatbot-body";
-    body.textContent = output;
+  const body = document.createElement("div");
+  body.className = "chatbot-body";
+  body.textContent = output;
 
-    chatbot.appendChild(header);
-    chatbot.appendChild(body);
-    document.body.appendChild(chatbot);
-    console.log("[content] Chatbot displayed.");
+  chatbot.appendChild(header);
+  chatbot.appendChild(body);
+  document.body.appendChild(chatbot);
+  console.log("[content] Chatbot displayed.");
 }
 
 function removeChatbot() {
@@ -119,19 +121,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log("[content] Message received:", request.action);
 
   if (request.action === "startDetection") {
+    if (isAnalyzing) {
+      console.warn("[content] Already analyzing, ignoring duplicate request.");
+      return;
+    }
+    isAnalyzing = true;
+
     waitForGmailUI(timeout)
       .then(() => {
         const text = getEmailText();
         if (!text) {
           console.warn("[content] No email text found.");
+          isAnalyzing = false;
           return;
         }
-        analyzeEmail(text).then((output) => showChatbot(output));
+        analyzeEmail(text)
+          .then((output) => {
+            showChatbot(output);
+            isAnalyzing = false;
+          })
+          .catch((err) => {
+            console.error("[content] Analysis error:", err);
+            isAnalyzing = false;
+          });
       })
-      .catch((err) => console.warn("[content] Gmail UI timeout:", err.message));
+      .catch((err) => {
+        console.warn("[content] Gmail UI timeout:", err.message);
+        isAnalyzing = false;
+      });
   }
 
   if (request.action === "stopDetection") {
+    isAnalyzing = false;
     removeChatbot();
   }
 });

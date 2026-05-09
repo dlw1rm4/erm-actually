@@ -1,64 +1,87 @@
+// Prevent flood attacks by enforcing a cooldown between toggle actions
+let lastToggleTime = 0;
+const COOLDOWN = 3000;
+let cooldownTimer = null;
+
 document.addEventListener("DOMContentLoaded", async () => {
-    const toggleBtn = document.getElementById("switch");
-    const heading = document.getElementById("heading");
-    const result = document.getElementById("result");
+  const toggleBtn = document.getElementById("switch");
+  const heading = document.getElementById("heading");
+  const result = document.getElementById("result");
 
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    console.log("[popup] Current tab:", tab.id, tab.url);
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  console.log("[popup] Current tab:", tab.id, tab.url);
 
-    const tabUrl = new URL(tab.url);
-    const isGmail = tabUrl.hostname === "mail.google.com";
-    const isSpecificEmail = tabUrl.hash.split("/").length >= 2 && tabUrl.hash.split("/")[1].length > 0;
-    console.log("[popup] isGmail:", isGmail, "| isSpecificEmail:", isSpecificEmail);
+  const tabUrl = new URL(tab.url);
+  const isGmail = tabUrl.hostname === "mail.google.com";
+  const isSpecificEmail = tabUrl.hash.split("/").length >= 2 && tabUrl.hash.split("/")[1].length > 0;
+  console.log("[popup] isGmail:", isGmail, "| isSpecificEmail:", isSpecificEmail);
 
-    if (!isGmail) {
-        toggleBtn.disabled = true;
-        result.innerText = "Please open Gmail to use this extension.";
-        console.warn("[popup] Toggle disabled — not on Gmail.");
-    } else if (!isSpecificEmail) {
-        toggleBtn.disabled = true;
-        result.innerText = "Click into a specific email to start analyzing.";
-        console.warn("[popup] Toggle disabled — no specific email open.");
+  if (!isGmail) {
+    toggleBtn.disabled = true;
+    result.innerText = "Please open Gmail to use this extension.";
+    console.warn("[popup] Toggle disabled — not on Gmail.");
+  } else if (!isSpecificEmail) {
+    toggleBtn.disabled = true;
+    result.innerText = "Click into a specific email to start analyzing.";
+    console.warn("[popup] Toggle disabled — no specific email open.");
+  } else {
+    toggleBtn.disabled = false;
+    console.log("[popup] Toggle enabled — valid email detected.");
+
+    // restore toggle state if same tab
+    const stored = await chrome.storage.local.get(["isDetecting", "activeTabUrl"]);
+    console.log("[popup] Stored state:", stored);
+
+
+    if (stored.isDetecting && stored.activeTabUrl === tab.url) {
+      toggleBtn.checked = true;
+      heading.textContent = "Detecting...";
+      console.log("[popup] Restored ON state for tab:", tab.url);
     } else {
-        toggleBtn.disabled = false;
-        console.log("[popup] Toggle enabled — valid email detected.");
-
-        // restore toggle state if same tab
-        const stored = await chrome.storage.local.get(["isDetecting", "activeTabUrl"]);
-        console.log("[popup] Stored state:", stored);
-
-
-        if (stored.isDetecting && stored.activeTabUrl === tab.url) {
-            toggleBtn.checked = true;
-            heading.textContent = "Detecting...";
-          console.log("[popup] Restored ON state for tab:", tab.url);
-        } else {
-          // if not detecting or different email, ensure state is cleared
-          await chrome.storage.local.set({ isDetecting: false, activeTabUrl: null });
-            console.log("[popup] Different email detected, cleared old state.");
-        }
+      // if not detecting or different email, ensure state is cleared
+      await chrome.storage.local.set({ isDetecting: false, activeTabUrl: null });
+      console.log("[popup] Different email detected, cleared old state.");
     }
+  }
 
-    toggleBtn.addEventListener("change", async () => {
-        if (toggleBtn.checked) {
-            console.log("[popup] Toggle ON — notifying content script...");
-            heading.textContent = "Detecting...";
+  toggleBtn.addEventListener("change", async () => {
+    const now = Date.now();
+    if (now - lastToggleTime < COOLDOWN) {
+      console.warn("[popup] Cooldown active, reverting toggle.");
+      toggleBtn.checked = false;  // always force off, don't just flip
+      toggleBtn.disabled = true;
 
-            // save state with current email URL
-            await chrome.storage.local.set({ isDetecting: true, activeTabUrl: tab.url });
-            console.log("[popup] Saved ON state for url:", tab.url);
+      const remaining = Math.ceil((COOLDOWN - (now - lastToggleTime)) / 1000);
+      let count = remaining;
+      heading.textContent = `Please wait ${count}s...`;
 
-            chrome.tabs.sendMessage(tab.id, { action: "startDetection" });
-
+      clearInterval(cooldownTimer);
+      cooldownTimer = setInterval(() => {
+        count--;
+        if (count <= 0) {
+          clearInterval(cooldownTimer);
+          toggleBtn.disabled = false;
+          heading.textContent = "Start detection:";
+          console.log("[popup] Cooldown finished, toggle re-enabled.");
         } else {
-            console.log("[popup] Toggle OFF — stopping detection...");
-            heading.textContent = "Start detection:";
-
-            // clear saved state
-            await chrome.storage.local.set({ isDetecting: false, activeTabUrl: null });
-            console.log("[popup] Cleared detection state.");
-
-            chrome.tabs.sendMessage(tab.id, { action: "stopDetection" });
+          heading.textContent = `Please wait ${count}s...`;
         }
-    });
+      }, 1000);
+
+      return;  // stop here — nothing below runs, no message sent
+    }
+    lastToggleTime = now;
+
+    if (toggleBtn.checked) {
+      console.log("[popup] Toggle ON — notifying content script...");
+      heading.textContent = "Detecting...";
+      await chrome.storage.local.set({ isDetecting: true, activeTabUrl: tab.url });
+      chrome.tabs.sendMessage(tab.id, { action: "startDetection" });
+    } else {
+      console.log("[popup] Toggle OFF — stopping detection...");
+      heading.textContent = "Start detection:";
+      await chrome.storage.local.set({ isDetecting: false, activeTabUrl: null });
+      chrome.tabs.sendMessage(tab.id, { action: "stopDetection" });
+    }
+  });
 });
