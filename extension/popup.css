@@ -71,6 +71,11 @@ h1 {
   height: 0;
 }
 
+.switch input:disabled + .slider {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 /* Slider */
 .slider {
   position: absolute;
