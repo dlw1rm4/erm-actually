@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "Erm...Actually!",
     "version": "1.0",
-    "permissions": ["activeTab", "scripting"],
+    "permissions": ["activeTab", "scripting", "tabs", "storage"],
     "icons": {
         "16": "./images/favicon.png",
         "48": "./images/favicon.png",
