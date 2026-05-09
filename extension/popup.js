@@ -1,73 +1,64 @@
 document.addEventListener("DOMContentLoaded", async () => {
-  const toggleBtn = document.getElementById("switch");
-  const heading = document.getElementById("heading");
-  const result = document.getElementById("result");
+    const toggleBtn = document.getElementById("switch");
+    const heading = document.getElementById("heading");
+    const result = document.getElementById("result");
 
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  console.log("[popup] Current tab:", tab.id, tab.url);
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    console.log("[popup] Current tab:", tab.id, tab.url);
 
-  const tabUrl = new URL(tab.url);
-  const isGmail = tabUrl.hostname === "mail.google.com";
-  const isSpecificEmail = tabUrl.hash.split("/").length >= 2 && tabUrl.hash.split("/")[1].length > 0;
-  console.log("[popup] isGmail:", isGmail, "| isSpecificEmail:", isSpecificEmail);
+    const tabUrl = new URL(tab.url);
+    const isGmail = tabUrl.hostname === "mail.google.com";
+    const isSpecificEmail = tabUrl.hash.split("/").length >= 2 && tabUrl.hash.split("/")[1].length > 0;
+    console.log("[popup] isGmail:", isGmail, "| isSpecificEmail:", isSpecificEmail);
 
-  if (!isGmail) {
-    toggleBtn.disabled = true;
-    result.innerText = "Please open Gmail to use this extension.";
-    console.warn("[popup] Toggle disabled — not on Gmail.");
-  } else if (!isSpecificEmail) {
-    toggleBtn.disabled = true;
-    result.innerText = "Click into a specific email to start analyzing.";
-    console.warn("[popup] Toggle disabled — no specific email open.");
-  } else {
-    toggleBtn.disabled = false;
-    console.log("[popup] Toggle enabled — valid email detected.");
-  }
-
-  toggleBtn.addEventListener("change", async () => {
-    if (toggleBtn.checked) {
-      console.log("[popup] Toggle ON — notifying content script...");
-      heading.textContent = "Detecting...";
-
-      const [tab] = await chrome.tabs.query({
-        active: true,
-        currentWindow: true,
-      });
-      chrome.tabs.sendMessage(
-        tab.id,
-        { action: "getEmail" },
-        async ({ text }) => {
-          if (!text) {
-            result.innerText = "No email found. Open an email in Gmail first.";
-            return;
-          }
-          const response = await fetch(
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=AIzaSyBPYkR62S1gLg0nDS2csp3ckexUxycLfXk",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                contents: [
-                  {
-                    parts: [
-                      {
-                        text: `You are a fact-checker. Analyze this email and identify claims that are false, misleading, or unverified. Be concise and specific.\n\nEmail:\n${text}`,
-                      },
-                    ],
-                  },
-                ],
-              }),
-            },
-          );
-
-          const data = await response.json();
-          result.innerText = data.candidates[0].content.parts[0].text;
-        },
-      );
+    if (!isGmail) {
+        toggleBtn.disabled = true;
+        result.innerText = "Please open Gmail to use this extension.";
+        console.warn("[popup] Toggle disabled — not on Gmail.");
+    } else if (!isSpecificEmail) {
+        toggleBtn.disabled = true;
+        result.innerText = "Click into a specific email to start analyzing.";
+        console.warn("[popup] Toggle disabled — no specific email open.");
     } else {
-      console.log("[popup] Toggle OFF — stopping detection...");
-      heading.textContent = "Start detection:";
-      chrome.tabs.sendMessage(tab.id, { action: "stopDetection" });
+        toggleBtn.disabled = false;
+        console.log("[popup] Toggle enabled — valid email detected.");
+
+        // restore toggle state if same tab
+        const stored = await chrome.storage.local.get(["isDetecting", "activeTabUrl"]);
+        console.log("[popup] Stored state:", stored);
+
+
+        if (stored.isDetecting && stored.activeTabUrl === tab.url) {
+            toggleBtn.checked = true;
+            heading.textContent = "Detecting...";
+          console.log("[popup] Restored ON state for tab:", tab.url);
+        } else {
+          // if not detecting or different email, ensure state is cleared
+          await chrome.storage.local.set({ isDetecting: false, activeTabUrl: null });
+            console.log("[popup] Different email detected, cleared old state.");
+        }
     }
-  });
+
+    toggleBtn.addEventListener("change", async () => {
+        if (toggleBtn.checked) {
+            console.log("[popup] Toggle ON — notifying content script...");
+            heading.textContent = "Detecting...";
+
+            // save state with current email URL
+            await chrome.storage.local.set({ isDetecting: true, activeTabUrl: tab.url });
+            console.log("[popup] Saved ON state for url:", tab.url);
+
+            chrome.tabs.sendMessage(tab.id, { action: "startDetection" });
+
+        } else {
+            console.log("[popup] Toggle OFF — stopping detection...");
+            heading.textContent = "Start detection:";
+
+            // clear saved state
+            await chrome.storage.local.set({ isDetecting: false, activeTabUrl: null });
+            console.log("[popup] Cleared detection state.");
+
+            chrome.tabs.sendMessage(tab.id, { action: "stopDetection" });
+        }
+    });
 });
