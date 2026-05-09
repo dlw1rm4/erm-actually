@@ -3,8 +3,18 @@
     "name": "Erm...Actually!",
     "version": "1.0",
     "permissions": ["activeTab", "scripting"],
+    "icons": {
+        "16": "./images/favicon.ico",
+        "48": "./images/favicon.ico",
+        "128": "./images/favicon.ico"
+    },
     "action": {
-        "default_popup": "popup.html"
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "./images/favicon.ico",
+            "48": "./images/favicon.ico",
+            "128": "./images/favicon.ico"
+        }
     },
     "content_scripts": [
         {

@@ -11,7 +11,7 @@ document.getElementById("check").addEventListener("click", async () => {
         }
 
         const response = await fetch(
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyAqw5bMn6U9i3_7-Gv_rsuXsfb7hvDA27Y',
+            'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyDntlgaSGehodDB1up1yZPZE8uyTmEG_MA',
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
