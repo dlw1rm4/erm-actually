@@ -72,33 +72,39 @@ async function analyzeEmail(text) {
 }
 
 function showChatbot(output) {
-  const existing = document.getElementById("erm-chatbot");
-  if (existing) existing.remove();
+    const existing = document.getElementById("erm-chatbot");
+    if (existing) existing.remove();
 
-  const chatbot = document.createElement("div");
-  chatbot.id = "erm-chatbot";
-  chatbot.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        width: 340px;
-        max-height: 400px;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        padding: 16px;
-        overflow-y: auto;
-        z-index: 99999;
-        font-family: sans-serif;
-        font-size: 14px;
-        line-height: 1.5;
-    `;
-  chatbot.innerHTML = `
-        <div style="font-weight:700;margin-bottom:8px">Erm... Actually!</div>
-        <div>${output}</div>
-    `;
-  document.body.appendChild(chatbot);
-  console.log("[content] Chatbot displayed.");
+    const chatbot = document.createElement("div");
+    chatbot.id = "erm-chatbot";
+
+    const header = document.createElement("div");
+    header.className = "chatbot-header";
+
+    const title = document.createElement("div");
+    title.className = "chatbot-title";
+    title.textContent = "Erm... Actually!";
+
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "chatbot-close";
+    closeBtn.textContent = "✕";
+    closeBtn.addEventListener("click", () => {
+        chatbot.remove();
+        chrome.storage.local.set({ isDetecting: false, activeTabUrl: null });
+        console.log("[content] Chatbot closed by user.");
+    });
+
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+
+    const body = document.createElement("div");
+    body.className = "chatbot-body";
+    body.textContent = output;
+
+    chatbot.appendChild(header);
+    chatbot.appendChild(body);
+    document.body.appendChild(chatbot);
+    console.log("[content] Chatbot displayed.");
 }
 
 function removeChatbot() {

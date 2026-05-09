@@ -24,13 +24,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.log("[popup] Toggle enabled — valid email detected.");
 
         // restore toggle state if same tab
-        const stored = await chrome.storage.local.get(["isDetecting", "activeTabId"]);
+        const stored = await chrome.storage.local.get(["isDetecting", "activeTabUrl"]);
         console.log("[popup] Stored state:", stored);
 
-        if (stored.isDetecting && stored.activeTabId === tab.id) {
+
+        if (stored.isDetecting && stored.activeTabUrl === tab.url) {
             toggleBtn.checked = true;
             heading.textContent = "Detecting...";
-            console.log("[popup] Restored ON state for tab:", tab.id);
+          console.log("[popup] Restored ON state for tab:", tab.url);
+        } else {
+          // if not detecting or different email, ensure state is cleared
+          await chrome.storage.local.set({ isDetecting: false, activeTabUrl: null });
+            console.log("[popup] Different email detected, cleared old state.");
         }
     }
 
@@ -39,9 +44,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             console.log("[popup] Toggle ON — notifying content script...");
             heading.textContent = "Detecting...";
 
-            // save state with current tab id
-            await chrome.storage.local.set({ isDetecting: true, activeTabId: tab.id });
-            console.log("[popup] Saved ON state for tab:", tab.id);
+            // save state with current email URL
+            await chrome.storage.local.set({ isDetecting: true, activeTabUrl: tab.url });
+            console.log("[popup] Saved ON state for url:", tab.url);
 
             chrome.tabs.sendMessage(tab.id, { action: "startDetection" });
 
@@ -50,7 +55,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             heading.textContent = "Start detection:";
 
             // clear saved state
-            await chrome.storage.local.set({ isDetecting: false, activeTabId: null });
+            await chrome.storage.local.set({ isDetecting: false, activeTabUrl: null });
             console.log("[popup] Cleared detection state.");
 
             chrome.tabs.sendMessage(tab.id, { action: "stopDetection" });
