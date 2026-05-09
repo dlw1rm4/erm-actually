@@ -1,4 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
+    console.log("Check 1: ", this.checked);
   // TOGGLE SWITCH LOGIC
   document
     .getElementById("switch")
@@ -7,7 +8,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const result = document.getElementById("result");
 
       // Switch is "ON", start detecting email content logic:
-      if (this.checked) {
+        if (this.checked) {
+           console.log("Check 2: ", this.checked);
         heading.textContent = "Detecting...";
 
         const [tab] = await chrome.tabs.query({
@@ -33,7 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     {
                       parts: [
                         {
-                          text: "You are a fact-checker. Analyze this email and identify claims that are false, misleading, or unverified. Be concise and specific.\n\nEmail:\n${text}",
+                          text: `You are a fact-checker. Analyze this email and identify claims that are false, misleading, or unverified. Be concise and specific.\n\nEmail:\n${text}`,
                         },
                       ],
                     },
@@ -46,7 +48,8 @@ document.addEventListener("DOMContentLoaded", () => {
             result.innerText = data.candidates[0].content.parts[0].text;
           },
         );
-      } else {
+        } else {
+             console.log("Check 3: ", this.checked);
         heading.textContent = "Start detection:";
         result.innerText = "";
         return;
