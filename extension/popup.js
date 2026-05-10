@@ -103,7 +103,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       console.log("[popup] Toggle ON — notifying content script...");
       heading.textContent = "Detecting...";
       await chrome.storage.local.set({ isDetecting: true, activeTabUrl: tab.url });
-      console.log("[popup] Saved ON state for url:", tab.url);
+
+      // Inject content script first, then send message
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ["config.js", "content.js"]
+      });
+
       chrome.tabs.sendMessage(tab.id, { action: "startDetection" });
     } else {
       console.log("[popup] Toggle OFF — stopping detection...");

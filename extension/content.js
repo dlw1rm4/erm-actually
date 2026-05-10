@@ -2,6 +2,7 @@
 const timeout = 5000;
 let isAnalyzing = false;
 let conversationHistory = [];
+console.log("[content] API key loaded:", typeof GEMINI_API_KEY !== "undefined" ? "YES" : "NO");
 
 console.log("[content] Script loaded on:", window.location.href);
 
@@ -54,7 +55,7 @@ async function analyzeEmail(text) {
       body: JSON.stringify({
         contents: [{
           parts: [{
-            text: `You are a fact-checker. Analyze this email and identify claims that are false, misleading, or unverified. Format your response as bullet points. Be concise and specific.\n\nEmail:\n${text}`,
+            text: `You are a security-focused email analysis assistant. First, determine whether the email is legitimate or fraudulent by identifying phishing, impersonation, social engineering, suspicious links, or requests for sensitive information. If the email is fraudulent or suspicious, clearly state this and list supporting evidence, then stop. If the email is legitimate, assess it for any biased, discriminatory, or unfair language and briefly describe the type and severity of any bias; if no bias exists, explicitly state that. Format all responses as bullet points only.\n\nEmail:\n${text}`,
           }],
         }],
       }),
@@ -86,24 +87,19 @@ function formatBulletPoints(text) {
 }
 
 function showAnalyzingCard() {
-  const existing = document.getElementById("erm-chatbot");
-  if (existing) existing.remove();
-
+  const shadow = createChatbotContainer();
+  
   const chatbot = document.createElement("div");
   chatbot.id = "erm-chatbot";
   chatbot.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        width: 360px;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        padding: 16px;
-        z-index: 99999;
-        font-family: sans-serif;
-        font-size: 14px;
-    `;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    padding: 16px;
+    font-family: sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  `;
 
   const header = document.createElement("div");
   header.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:12px;";
@@ -111,7 +107,6 @@ function showAnalyzingCard() {
   const avatar = document.createElement("img");
   avatar.src = chrome.runtime.getURL("/images/chatbot.png");
   avatar.style.cssText = "width:32px;height:32px;border-radius:50%;object-fit:cover;";
-  avatar.alt = "Erm bot";
 
   const title = document.createElement("div");
   title.style.cssText = "font-weight:700;flex:1;";
@@ -121,34 +116,26 @@ function showAnalyzingCard() {
   closeBtn.textContent = "✕";
   closeBtn.style.cssText = "background:none;border:none;cursor:pointer;font-size:16px;color:#888;padding:0;line-height:1;";
   closeBtn.addEventListener("click", () => {
-    chatbot.remove();
+    removeChatbot();
     isAnalyzing = false;
     chrome.storage.local.set({ isDetecting: false, activeTabUrl: null });
-    console.log("[content] Analyzing card closed by user.");
   });
+
+  const status = document.createElement("div");
+  status.style.cssText = "color:#888;font-size:13px;display:flex;align-items:center;gap:8px;";
+  status.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#1a73e8;animation:erm-pulse 1s infinite;"></span> Analyzing...`;
 
   header.appendChild(avatar);
   header.appendChild(title);
   header.appendChild(closeBtn);
-
-  const status = document.createElement("div");
-  status.style.cssText = "color:#888;font-size:13px;display:flex;align-items:center;gap:8px;";
-  status.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#1a73e8;animation:pulse 1s infinite;"></span> Analyzing...`;
-
-  // pulse animation
-  const style = document.createElement("style");
-  style.textContent = `@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`;
-  document.head.appendChild(style);
-
   chatbot.appendChild(header);
   chatbot.appendChild(status);
-  document.body.appendChild(chatbot);
+  shadow.appendChild(chatbot);
   console.log("[content] Analyzing card shown.");
 }
 
 function showChatbot(output, emailContext) {
-  const existing = document.getElementById("erm-chatbot");
-  if (existing) existing.remove();
+  const shadow = createChatbotContainer();
 
   conversationHistory = [
     { role: "user", parts: [{ text: `Analyze this email:\n${emailContext}` }] },
@@ -158,21 +145,14 @@ function showChatbot(output, emailContext) {
   const chatbot = document.createElement("div");
   chatbot.id = "erm-chatbot";
   chatbot.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        width: 360px;
-        max-height: 500px;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        display: flex;
-        flex-direction: column;
-        z-index: 99999;
-        font-family: sans-serif;
-        font-size: 14px;
-        overflow: hidden;
-    `;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: column;
+    max-height: 500px;
+    overflow: hidden;
+  `;
 
   const header = document.createElement("div");
   header.style.cssText = "display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid #eee;flex-shrink:0;";
@@ -180,7 +160,6 @@ function showChatbot(output, emailContext) {
   const avatar = document.createElement("img");
   avatar.src = chrome.runtime.getURL("/images/chatbot.png");
   avatar.style.cssText = "width:32px;height:32px;border-radius:50%;object-fit:cover;";
-  avatar.alt = "Erm bot";
 
   const title = document.createElement("div");
   title.style.cssText = "font-weight:700;flex:1;";
@@ -190,9 +169,8 @@ function showChatbot(output, emailContext) {
   closeBtn.textContent = "✕";
   closeBtn.style.cssText = "background:none;border:none;cursor:pointer;font-size:16px;color:#888;padding:0;line-height:1;";
   closeBtn.addEventListener("click", () => {
-    chatbot.remove();
+    removeChatbot();
     chrome.storage.local.set({ isDetecting: false, activeTabUrl: null });
-    console.log("[content] Chatbot closed by user.");
   });
 
   header.appendChild(avatar);
@@ -235,8 +213,37 @@ function showChatbot(output, emailContext) {
   chatbot.appendChild(header);
   chatbot.appendChild(messagesContainer);
   chatbot.appendChild(inputRow);
-  document.body.appendChild(chatbot);
+  shadow.appendChild(chatbot);
   console.log("[content] Chatbot displayed.");
+}
+
+function createChatbotContainer() {
+  const existing = document.getElementById("erm-chatbot-host");
+  if (existing) existing.remove();
+
+  const host = document.createElement("div");
+  host.id = "erm-chatbot-host";
+  host.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 360px;
+    z-index: 2147483647;
+    font-family: sans-serif;
+    font-size: 14px;
+  `;
+
+  const shadow = host.attachShadow({ mode: "open" });
+
+  const style = document.createElement("style");
+  style.textContent = `
+    @keyframes erm-pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+  `;
+  shadow.appendChild(style);
+
+  document.body.appendChild(host);
+  return shadow;
 }
 
 async function sendFollowUp(userText, messagesContainer, emailContext) {
@@ -293,9 +300,9 @@ async function sendFollowUp(userText, messagesContainer, emailContext) {
 }
 
 function removeChatbot() {
-  const chatbot = document.getElementById("erm-chatbot");
-  if (chatbot) {
-    chatbot.remove();
+  const host = document.getElementById("erm-chatbot-host");
+  if (host) {
+    host.remove();
     console.log("[content] Chatbot removed.");
   }
 }
@@ -304,8 +311,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log("[content] Message received:", request.action);
 
   if (request.action === "isChatbotVisible") {
-    const exists = !!document.getElementById("erm-chatbot");
-    console.log("[content] Chatbot visible:", exists);
+    const exists = !!document.getElementById("erm-chatbot-host");
     sendResponse({ visible: exists });
     return true;
   }
