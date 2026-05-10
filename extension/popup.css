@@ -9,8 +9,8 @@
 body {
   font-family: "Roboto Slab", serif;
 
-  width: 420px;
-  height: 520px;
+  width: 380px;
+  height: 400px;
 
   padding: 20px;
 
@@ -30,8 +30,13 @@ body {
   align-items: center;
 }
 
+img {
+  display: block;
+  margin: 0 auto;
+}
+
 h1 {
-  font-size: 2rem;
+  font-size: 1.5rem;
   line-height: 1;
 
   overflow: hidden;
@@ -48,10 +53,6 @@ h2 {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-disclaimer.p {
-  text-align: center;
 }
 
 details {
