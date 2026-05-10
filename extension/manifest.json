@@ -16,10 +16,17 @@
             "128": "./images/favicon.png"
         }
     },
+    "web_accessible_resources": [
+        {
+            "resources": ["images/chatbot.png"],
+            "matches": ["https://mail.google.com/*"]
+        }
+    ],
     "content_scripts": [
         {
             "matches": ["https://mail.google.com/*"],
-            "js": ["content.js"]
+            "js": ["config.js", "content.js"],
+            "css": ["popup.css"]
         }
     ]
 }
